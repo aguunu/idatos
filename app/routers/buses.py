@@ -1,50 +1,72 @@
-from ..dependencies import get_db
-from fastapi import APIRouter, Depends, HTTPException
-from geoalchemy2.shape import to_shape
-from ..models import Location
-from ..schemas import (
-    FeatureCollection,
-    LocationProperties,
-    LocationResponse,
-    LocationsResponse,
-)
+import json
+
+from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import (
     Session,
+    aliased,
 )
 
-router = APIRouter(prefix="/locations")
+from ..dependencies import get_db
+from ..models import MainRoutes, RouteVariants
+
+router = APIRouter(prefix="/routes")
 
 
-@router.get("/", response_model=LocationsResponse)
-def get_locations(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    locations = db.query(Location).offset(skip).limit(limit).all()
-    features = [
-        LocationResponse(
-            type="Feature",
-            geometry=to_shape(
-                location.geom
-            ),  # Point(type="Point", coordinates=Position2D(0.123, 132.13)),
-            properties=LocationProperties(id=location.id, name=location.name),
-        )
-        for location in locations
-    ]
-    response = FeatureCollection(type="FeatureCollection", features=features)
+@router.get("/")
+def get_main_routes(db: Session = Depends(get_db)):
+    response = [{"id": r.id, "name": r.name} for r in db.query(MainRoutes).all()]
     return response
 
 
-@router.get("/{location_id}", response_model=LocationResponse)
-def get_location(location_id: int, db: Session = Depends(get_db)):
-    # location = db.query(
-    #     Location.id, Location.name, func.ST_AsGeoJSON(Location.geom).label("geom")
-    # ).filter(Location.id == location_id).first()
-    location = db.query(Location).filter(Location.id == location_id).first()
-    if location is None:
-        raise HTTPException(status_code=404, detail="Location not found")
+@router.get("/{name}")
+def get_main_route(name: str, db: Session = Depends(get_db)):
+    main_routes = aliased(MainRoutes)
+    route_variants = aliased(RouteVariants)
 
-    geometry = to_shape(location.geom)
-    response = LocationResponse(
-        type="Feature",
-        geometry=geometry,  # json.loads(location.geom),
-        properties=LocationProperties(id=location.id, name=location.name),
-    )
+    response = {
+        "name": name,
+        "variants": [
+            {
+                "variantId": r.id,
+                "origin": r.origin,
+                "destination": r.destination,
+                "upward": r.upward,
+            }
+            for r in db.query(route_variants)
+            .join(main_routes, onclause=main_routes.id == route_variants.route_id)
+            .where(main_routes.name == name)
+            .all()
+        ],
+    }
+
+    return response
+
+
+@router.get("/variants/{id}")
+def get_variant_info(id: str, db: Session = Depends(get_db)):
+    route_variants = aliased(RouteVariants)
+    r = db.query(route_variants, func.ST_AsGeoJSON(route_variants.path).label("path")).filter(route_variants.id == id).first()
+
+    if not r:
+        return {}
+
+    r, path = r
+
+    response = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": json.loads(path),
+                "properties": {
+                    "variantId": r.id,
+                    "origin": r.origin,
+                    "destination": r.destination,
+                    "upward": r.upward,
+                }
+            }
+        ]
+    }
+
     return response
