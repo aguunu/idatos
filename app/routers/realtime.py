@@ -44,5 +44,5 @@ def get_realtime():
         headers={"User-Agent": "curl/7.81.0", "Authorization": f"Bearer {token}"},
     )
 
-    print(response.json())
+    print(response.content)
     return response.json()
