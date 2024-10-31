@@ -31,6 +31,7 @@ def get_access_token():
     else:
         raise Exception(str(response.content))
 
+
 @router.get("/")
 def get_realtime():
     try:

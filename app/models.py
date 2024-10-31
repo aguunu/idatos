@@ -16,18 +16,19 @@ class MainRoutes(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128), unique=True)
 
+
 class RouteVariants(Base):
     __tablename__ = "variantRoutes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    route_id: Mapped[int] = mapped_column(ForeignKey("mainRoutes.id"), nullable=False)
+    origin: Mapped[str] = mapped_column(String(128), nullable=False)
+    destination: Mapped[str] = mapped_column(String(128), nullable=False)
     upward: Mapped[bool] = mapped_column(Boolean, nullable=True)
     path: Mapped[Geometry] = mapped_column(
         Geometry(geometry_type="LINESTRING", srid=4326, spatial_index=True),
         nullable=True,
     )
-    route_id: Mapped[int] = mapped_column(ForeignKey("mainRoutes.id"), nullable=False)
-    origin: Mapped[str] = mapped_column(String(128), nullable=False)
-    destination: Mapped[str] = mapped_column(String(128), nullable=False)
 
 
 class Stops(Base):
@@ -40,7 +41,7 @@ class Stops(Base):
 
 
 class RouteVariantStops(Base):
-    __tablename__ = "routeVariantStops"
+    __tablename__ = "variantRoutesStops"
 
     stop_id: Mapped[int] = mapped_column(ForeignKey("stops.id"), primary_key=True)
     variant_id: Mapped[int] = mapped_column(
@@ -60,7 +61,7 @@ class Trip(Base):
 class Schedule(Base):
     __tablename__ = "schedule"
 
-    trip_id: Mapped[int] = mapped_column(primary_key=True)
+    trip_id: Mapped[int] = mapped_column(ForeignKey("trips.id"), primary_key=True)
     ordinal: Mapped[int] = mapped_column(primary_key=True)
     arrival_time: Mapped[datetime] = mapped_column(Time)
     previous_day: Mapped[int] = mapped_column()

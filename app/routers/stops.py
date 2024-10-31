@@ -32,6 +32,7 @@ def get_stops(db: Session = Depends(get_db)) -> StopsResponse:
 
     return response
 
+
 @router.get("/{id}")
 def get_variant_stops(id: int, db: Session = Depends(get_db)):
     response = {

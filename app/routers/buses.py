@@ -46,7 +46,11 @@ def get_main_route(name: str, db: Session = Depends(get_db)):
 @router.get("/variants/{id}")
 def get_variant_info(id: str, db: Session = Depends(get_db)):
     route_variants = aliased(RouteVariants)
-    r = db.query(route_variants, func.ST_AsGeoJSON(route_variants.path).label("path")).filter(route_variants.id == id).first()
+    r = (
+        db.query(route_variants, func.ST_AsGeoJSON(route_variants.path).label("path"))
+        .filter(route_variants.id == id)
+        .first()
+    )
 
     if not r:
         return {}
@@ -64,9 +68,9 @@ def get_variant_info(id: str, db: Session = Depends(get_db)):
                     "origin": r.origin,
                     "destination": r.destination,
                     "upward": r.upward,
-                }
+                },
             }
-        ]
+        ],
     }
 
     return response
